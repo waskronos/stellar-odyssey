@@ -1,0 +1,1540 @@
+"use strict";
+  let gamestate = 'start';
+  let data;
+  let stars = [];
+  let showleader = false;
+  let scrospeed = 8;
+  let backgroun, menubg, introvideo, bgmusic;
+  let ship1, ship1spr;
+  let ex1ani, ex1spr;
+  let shoot1ani, shot1ani, hit1ani;
+  let bgx = 0;
+  let bgspeed = 2;
+  let targy;
+  let bullets = [];
+  let miss, misshit;
+  let missiles  =[];
+  let missamm = 3;
+  let maxmissamm = 3;
+  let missrecharge = 200;
+  let lastmissrech = 0;
+  let misspower = 50;
+  let missradius = 90;
+  let firerate = 15;
+  let bulletspeed = 11;
+  let lastshot = 0;
+  let llastshot = 0;
+  let health;
+  let maxhealth = 250;
+  let curhealth = 250;
+  let disphealth = 250;
+  let bdisphealth = 450;
+  let enemies = [];
+  let enemyfirerate = 22;
+  let enemybulletspeed = 7;
+  let suicidei, suicideexp;
+  let easyshooti, easyshootexp;
+  let ene2shoot, ene2shot, ene2hit;
+  let ene3shoot, ene3shot, ene3hit;
+  let espawnx, espawny;
+  let lastSpawn = 0; //for last enemy spwan
+  let spawnInterval = 50;
+  let activeform = [];
+  let enemybullets = [];
+  let isGameOver = false;
+  let playerlocked = false;
+  let bossmode = false;
+  let bossSpawned = false;
+  let bossEntryTargetX = 1550;
+  let bossentry = 4;
+  let i = 0;
+  let flashing = true
+  let bossEntryDelay = 90; 
+  let bossEntryStartFrame = 0;
+  let  bulletrainShotsFired = 0;
+  let bulletrainmaxshots = 3;
+  let flashCounter = 0;
+  let bossdyingtimer = 0;
+  let bossdeathstate = 0;
+  let endzoom = false;
+  let blackout = false;
+  let blackoutTopY = 0;
+  let blackoutBottomY = 0;
+  let introfont, explo, mislau, ene2sound, enemy3, firing;
+
+  let recoilAmount = 3; 
+  let recoiltimer = 0;
+  let recoilstage = 0;
+  let direction = -1;
+  let wavemanager = {
+    currwave: 0,
+    points: 0,
+    pointsreq: 10,
+    wavecomp: false,
+    waves: [
+      {enemytype: "suicide", pointsreq: 10},
+      {enemytype: "easyshoot", pointsreq: 10},
+      {enemytype: "hardshoot", pointsreq: 10}
+    ],
+  };
+
+  let missile;
+  let stax,stay,endx,endy, pct;
+  let disx,disy;
+  let expon = 2.0;
+  let step = 0.016;
+  let boss, bossnorm, bosscraze, bossfinal;
+  let bossbullet, bossbullhit;
+  let bossbul = [];
+  let bossmis = [];
+  let bossattacking = false;
+  let currattack = false;
+  let bulletRainRouteCount;
+  let bosshb;
+  let videoStartFrame = 0;
+  let menuTitleOpacity = 0;
+  let gameButtonVisible = true;
+  let buttonFlashTimer = 0;
+  let startopacity = 0;
+  let maxopacity = 255;
+  let flashingdown = true;
+  let fadeout = false;
+  let fadeoutop = 0;
+
+  const ENEMYTYPE = {
+    suicide: {
+      name: "suicide",
+      image: null,
+      explode: null,
+      health: 40,
+      damage: 10,
+      givespoints: true,
+    }, 
+    easyshoot: {
+      name: "easyshoot",
+      image: null,
+      explode: null,
+      health: 60,
+      damage: 15,
+      givespoints: true,
+    },
+    hardshoot: {
+      name: "hardshoot",
+      image: null,
+      explode: null,
+      health: 100,
+      damage: 20,
+      givespoints: true
+    }
+  };
+  const FORMATIONS = { //hardcoded formation arrays for the enemy
+    rarrow: [
+      { x: 0, y: 0 },
+      { x: -120, y: -120 },
+      { x: -120, y: 120 },
+      { x: -240, y: -240 },
+      { x: -240, y: 240 },
+      { x: -360, y: 0 },
+    ],
+    larrow: [
+      { x: -240, y: 0 },
+      { x: -160, y: -160 },
+      { x: -160, y: 160 },
+      { x: -80, y: -80 },
+      { x: -80, y: 80 },
+      { x: 0, y: 0 },
+    ],
+    stacktri: [
+      { x: 0, y: -120 },
+      { x: -60, y: 0 },
+      { x: 60, y: 0 },
+      { x: -120, y: 120 },
+      { x: 0, y: 120 },
+      { x: 120, y: 120 },
+    ],
+    halfcir: [
+      { x: -180, y: -60 },
+      { x: -120, y: -100 },
+      { x: -60, y: -120 },
+      { x: -60, y: 120 },
+      { x: -120, y: 100 },
+      { x: -180, y: 60 },
+    ],
+    cir: [
+      { x: -120, y: 0 },
+      { x: -60, y: -100 },
+      { x: 60, y: -100 },
+      { x: 120, y: 0 },
+      { x: 60, y: 100 },
+      { x: -60, y: 100 },
+    ],
+  };
+
+  const enemyform = {};
+
+  function preload() {
+    data = loadJSON("images/data.json");
+    introfont = loadFont("fonts/in.ttf")
+    shoot1ani = loadAnimation(
+      "images/ship1/shots/shot1f.png",
+      "images/ship1/shots/shot2f.png",
+      "images/ship1/shots/shot3f.png",
+      "images/ship1/shots/shot4f.png",
+      "images/ship1/shots/shot5f.png"
+    );
+    shot1ani = loadAnimation("images/ship1/shots/shot1.png");
+    hit1ani = loadAnimation(
+      "images/ship1/shots/shot1e.png",
+      "images/ship1/shots/shot2e.png",
+      "images/ship1/shots/shot3e.png",
+      "images/ship1/shots/shot4e.png",
+      "images/ship1/shots/shot5e.png",
+      "images/ship1/shots/shot6e.png",
+      "images/ship1/shots/shot7e.png",
+      "images/ship1/shots/shot8e.png"
+    );
+    miss = loadImage("images/ship1/missile/missile.png")
+    misshit = loadAnimation(
+      "images/ship1/missile/missexplode00.png", 
+      "images/ship1/missile/missexplode01.png", 
+      "images/ship1/missile/missexplode02.png", 
+      "images/ship1/missile/missexplode03.png", 
+      "images/ship1/missile/missexplode04.png", 
+      "images/ship1/missile/missexplode05.png", 
+      "images/ship1/missile/missexplode06.png", 
+      "images/ship1/missile/missexplode07.png", 
+      "images/ship1/missile/missexplode08.png", 
+      "images/ship1/missile/missexplode09.png"
+    );
+    ship1 = loadImage("images/ship1/sship.png");
+    backgroun = loadImage("images/backgg.png");
+    ex1ani = loadAnimation(
+      "images/ship1/exhaust/exhaust1.png",
+      "images/ship1/exhaust/exhaust2.png",
+      "images/ship1/exhaust/exhaust3.png",
+      "images/ship1/exhaust/exhaust4.png"
+    ); 
+    health = loadImage("images/healthbar.png");
+    ENEMYTYPE.suicide.image = loadImage("images/enemies/ene1/ene1.png");
+    ENEMYTYPE.easyshoot.image = loadImage("images/enemies/ene2/ene2.png");
+    ENEMYTYPE.hardshoot.image = loadImage("images/enemies/ene3/ene3.png");
+    ENEMYTYPE.suicide.explode = loadAnimation(
+      "images/enemies/ene1/ex1.png",
+      "images/enemies/ene1/ex2.png",
+      "images/enemies/ene1/ex3.png",
+      "images/enemies/ene1/ex4.png",
+      "images/enemies/ene1/ex5.png",
+      "images/enemies/ene1/ex6.png",
+      "images/enemies/ene1/ex7.png",
+      "images/enemies/ene1/ex8.png",
+      "images/enemies/ene1/ex9.png",
+      "images/enemies/ene1/ex10.png"
+    );
+    ENEMYTYPE.easyshoot.explode = loadAnimation(
+      "images/enemies/ene2/ene2exp0.png",
+      "images/enemies/ene2/ene2exp1.png",
+      "images/enemies/ene2/ene2exp2.png",
+      "images/enemies/ene2/ene2exp3.png",
+      "images/enemies/ene2/ene2exp4.png",
+      "images/enemies/ene2/ene2exp5.png"
+    );
+
+    ENEMYTYPE.hardshoot.explode = loadAnimation(
+      "images/enemies/ene3/explode0.png",
+      "images/enemies/ene3/explode1.png",
+      "images/enemies/ene3/explode2.png",
+      "images/enemies/ene3/explode3.png",
+      "images/enemies/ene3/explode4.png",
+      "images/enemies/ene3/explode5.png",
+    )
+    ene2shoot = loadAnimation(
+      "images/enemies/ene2/shots/shot00.png",
+      "images/enemies/ene2/shots/shot01.png",
+      "images/enemies/ene2/shots/shot02.png",
+      "images/enemies/ene2/shots/shot03.png",
+      "images/enemies/ene2/shots/shot04.png",
+      "images/enemies/ene2/shots/shot05.png"
+    );
+
+    ene2shot = loadImage("images/enemies/ene2/shots/shot.png");
+
+    ene2hit = loadAnimation(
+      "images/enemies/ene2/shots/shot07.png",
+      "images/enemies/ene2/shots/shot08.png",
+      "images/enemies/ene2/shots/shot09.png",
+      "images/enemies/ene2/shots/shot10.png",
+      "images/enemies/ene2/shots/shot11.png"
+    );
+
+    ene3shoot = loadAnimation(
+      "images/enemies/ene3/shots/shot1.png", 
+      "images/enemies/ene3/shots/shot2.png", 
+      "images/enemies/ene3/shots/shot3.png"
+    );
+
+    ene3shot = loadImage("images/enemies/ene3/shots/shot.png");
+    menubg = loadImage("images/background.png");
+    introvideo = createVideo(["images/int.mp4"])
+    introvideo.volume(0);
+    introvideo.hide();
+    introvideo.onended(videoend);
+    bgmusic = loadSound("sounds/bgmusic.mp3");
+    firing = loadSound("sounds/shipshot.wav");
+    explo = loadSound("sounds/misshit.mp3");
+    mislau = loadSound("sounds/misslaunch.wav");
+    ene2sound = loadSound("sounds/enemy2shot.wav");
+    enemy3 = loadSound("sounds/enemy3.wav");
+
+    ene3hit = loadAnimation(
+      "images/enemies/ene3/shots/shot5.png", 
+      "images/enemies/ene3/shots/shot6.png", 
+      "images/enemies/ene3/shots/shot7.png",
+      "images/enemies/ene3/shots/shot8.png"
+    );
+    console.log("Suicide explode animation:", ENEMYTYPE.suicide.explode);
+    console.log("Suicide explode animation:", ENEMYTYPE.easyshoot.explode);
+    suicideexp = ENEMYTYPE.suicide.explode;
+
+    bossnorm = loadAnimation("images/enemies/boss/normal/boss0.png", "images/enemies/boss/normal/boss1.png");
+    bosscraze = loadAnimation("images/enemies/boss/crazed/bosscrazy0.png", "images/enemies/boss/crazed/bosscrazy1.png", "images/enemies/boss/crazed/bosscrazy2.png");
+    bosscraze.frameDelay = 30;
+    bossfinal = loadAnimation("images/enemies/boss/ultboss/ultboss0.png", "images/enemies/boss/ultboss/ultboss1.png");
+    bossbullet = loadImage("images/enemies/boss/weapon/bull.png");
+    bossbullhit = loadAnimation("images/enemies/boss/weapon/impact0.png", "images/enemies/boss/weapon/impact1.png", "images/enemies/boss/weapon/impact2.png", "images/enemies/boss/weapon/impact3.png", "images/enemies/boss/weapon/impact4.png")
+    bosshb = loadImage("images/enemies/boss/bosshealthbar.png");
+  }
+
+  function setupStarfield(numStars = 300) { ///to create and array full of stars that will go past the screen
+    stars = [];
+    for (let i = 0; i < numStars; i++) {
+      stars.push({
+        x: random(width),
+        y: random(height),
+        size: random([2, 3, 4]),
+        speed: random(0.3, 1),
+        twinkleSpeed: random(0.001, 0.005),
+        twinkleOffset: random(TWO_PI),
+      });
+    }
+  }
+
+  function drawStarfield() { //draws the starfield from the last function, using a random function of sine to vary oscillation in their brightness (twinkle), pushi9ng and popping to restore the previous state
+    for (let star of stars) {
+      star.x -= star.speed * scrospeed;
+      if (star.x + star.size < 0) {
+        star.x = width;
+        star.y = random(height);
+        star.speed = random(0.3, 1);
+        star.twinkleOffset = random(TWO_PI);
+      }
+      let time = millis() * 0.002 * star.twinkleSpeed + star.twinkleOffset;
+      let alpha = 150 + 105 * sin(time);
+      push();
+      translate(star.x, star.y);
+      noStroke();
+      fill(255, 223, 0, alpha);
+      beginShape();
+      vertex(0, -star.size / 2);
+      vertex(star.size / 2, 0);
+      vertex(0, star.size / 2);
+      vertex(-star.size / 2, 0);
+      endShape(CLOSE);
+      pop();
+    }
+  }
+
+  function setup() { //setup player sprite and exhaust here, used depth to adjust layers, adding an event listener to disable right click (meant to use it, but didnt)
+    createCanvas(1920, 1080);
+    setupStarfield();
+    ship1spr = createSprite(200, height / 2);
+    ship1spr.addImage(ship1);
+    ship1spr.setCollider("rectangle", 0, 0, 25, 25);
+    ex1spr = createSprite(ship1spr.position.x - 24   , ship1spr.position.y + 10);
+    ex1spr.addAnimation("burn", ex1ani);
+    ex1spr.depth = ship1spr.depth - 1;
+    targy = ship1spr.position.y;
+    espawnx = width + 500;
+    espawny = height / 2;
+    miss.scale = (1.5);
+    misshit.scale = 3;
+    ene3shot.resize(300,170);
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    bossbullet.resize(80,30) 
+}
+
+  function fire() { //created a function to execute for firing with left click, linked to mouse button later
+    let bullet = createSprite(ship1spr.position.x + 115, ship1spr.position.y);
+    bullet.power = 15;
+    bullet.addAnimation("shoot", shoot1ani);
+    bullet.addAnimation("travel", shot1ani);
+    bullet.addAnimation("hit", hit1ani);
+    bullet.changeAnimation("shoot");
+    bullet.attachedToShip = true;
+    bullet.offsetX = 115;
+    bullet.offsetY = 0;
+    bullet.setCollider("rectangle", 0, 0, 20, 10);
+    bullet.exploding = false;
+    bullets.push(bullet);
+  }
+
+  function firemiss(){ //used an path based on exponential curve to get a curved path for the missile and imitate projectile motion
+
+    stax = ship1spr.position.x;
+    stay = ship1spr.position.y + 10;
+    endx = mouseX;
+    endy = mouseY;
+    disx = endx - stax;
+    disy = endy - stay;
+      pct = 0.0;
+
+      missile = createSprite(ship1spr.position.x + 95, ship1spr.position.y + 5);
+      missile.addImage(miss);
+      missile.addAnimation("hit", misshit);
+      missile.setCollider("rectangle", 0, 0, 20, 8);
+      missile.scale = 1.5;
+      missile.power = misspower;
+      missile.pct = 0.0;
+      missile.stay = stay; //these 4 are target and destination
+      missile.stax = stax;
+      missile.disx = disx;
+      missile.disy = disy;
+      missile.ismiss = true; //special flag to grant extra points
+      missile.exploding = false; //just to deal damage and then clear missile from screen
+      missiles.push(missile);
+      missamm--;
+    
+  }
+
+  function handlebullets() {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      let b = bullets[i];
+      if (b.attachedToShip) {
+        b.position.x = ship1spr.position.x + b.offsetX; //offset is used to account for the enemy ship's rotation, more explained later when enemy rotation comes up
+        b.position.y = ship1spr.position.y + b.offsetY;
+      }
+      if (
+        b.animation.getFrame() === b.animation.getLastFrame() && //to make sure animation is complete
+        b.getAnimationLabel() === "shoot"
+      ) {
+        b.changeAnimation("travel");
+        b.velocity.x = bulletspeed;
+        b.attachedToShip = false; //used flags to make sure bullet can only move when animation is done, otherwise it looks offset from the ship
+      }
+      if (b.position.x > width + 50) { //50 px margin before bullets are removed
+          b.remove();
+          bullets.splice(i, 1);
+      }
+    }
+  }
+
+  function handlemissiles(){
+    if (frameCount - lastmissrech >= missrecharge && missamm < maxmissamm){
+        missamm++;
+        lastmissrech = frameCount; //frame count used to give missile ammo increment a cooldown
+    }
+    for (let i = missiles.length - 1; i >=0; i--){
+      let m = missiles[i];
+
+      let prex = m.position.x; //previous positions
+      let prey = m.position.y; 
+      if (!m.exploding){ //only moves if its not exploding
+        m.pct += step;
+        m.position.x = m.stax + m.pct * m.disx;
+        m.position.y = m.stay + pow(m.pct,expon) * m.disy; //to give projectile motion, height is gained (or lost) using an exponential path
+
+        let dx = m.position.x - prex; //calculates movement vector by finding change in trajectory for both coordinates
+        let dy = m.position.y - prey;
+
+        if ( dx !== 0 || dx !== 0){ //if its non-zero!! to make sure its actuall y moving
+          let angle = atan2(dy,dx); //used atan2 to account for quadrants
+
+          m.rotation = (degrees(angle) + 90); //converted in degrees and added 90 because missile sprite was facing upwards (270)
+          console.log(angle);
+        };
+      }
+      if (m.position.x < -50 || m.position > width + 50 || m.position.y < -50 || m.position.y > height + 50){ //out of bounds
+        m.remove();
+        missiles.splice(i,1);
+      } else {
+        for (let j = enemies.length - 1; j >= 0; j--){
+          if (m.overlap(enemies[j]) && !m.exploding){
+            m.changeAnimation("hit");
+            m.velocity.x = 0;
+            m.velocity.y = 0; //changed velo so misisle doesnt go off flyin
+            m.exploding = true;
+            m.scale = 5;
+            m.animation.rewind(); //added because delays were causing animation to not start from the start
+
+            for (let k = enemies.length - 1; k >= 0; k--) {
+              if (dist(m.position.x, m.position.y, enemies[k].position.x, enemies[k].position.y) <= missradius) {
+                enemies[k].health -= misspower;
+                if (enemies[k].health <= 0 && !enemies[k].exploding) {
+                  enemies[k].changeAnimation("explode");
+                  explo.play();
+                  enemies[k].velocity.x = 0;
+                  enemies[k].velocity.y = 0;
+                  enemies[k].exploding = true;
+                  enemies[k].animation.rewind();
+                  if (enemies[k].givespoints) {
+                    wavemanager.points += 10; //every missile kill gives 10 points (like bullets)
+                    lastmissrech -= 5; //also will decrease CD by 5 frames
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+      if (m.exploding && m.animation.getFrame() === m.animation.getLastFrame()){
+        m.remove();
+        missiles.splice(i, 1); //remove on explosion anim finishing
+      }
+    }
+  }
+function videoend(){
+  gamestate = 'menu';
+}
+function loadingscreen() {
+  clear();
+  introvideo.play();
+  image(introvideo, 0, 0, width, height);
+  if (!bgmusic.isPlaying()) {
+     bgmusic.loop();
+     bgmusic.setVolume(1);
+  }
+  if (frameCount - videoStartFrame > 1800) { // ~30 secs at 60fps
+    gamestate = 'menu';
+    introvideo.stop();
+  }
+}
+function updatehealth(curhealth, maxhealth) {
+  if (curhealth > maxhealth) {
+    curhealth = maxhealth;
+  }
+  disphealth = lerp(disphealth, curhealth, 0.1); //used lerp to get gradual change instead of movement, 0.1 for smoother transition
+  let barwidth = map(disphealth, 0, maxhealth, 0, 169); //mapped disp health to health and dimensions of the bar
+  let barcolor; //color changes based on health% 
+  if (disphealth > 150) {
+    barcolor = color(0, 255, 0);
+  } else if (disphealth < 75) {
+    barcolor = color(255, 50, 50);
+  } else {
+    barcolor = color(255, 204, 0);
+  }
+  fill(barcolor);
+  rect(150, 52, barwidth, 28);
+  image(health, 0, 0, 384, 192); //hard coded coordinates because PNG was only a 'stencil'
+
+  if (curhealth <= 0 && !isGameOver) {
+    triggerGameOver();
+  }
+}
+
+  function assign(enemytype) { //giving each enemy a random formation, but only if it is not assigned
+    if (!enemyform[enemytype]) {
+      const keys = Object.keys(FORMATIONS); //fetches all keys from the array FORMATIONS
+      const form = random(keys);
+      enemyform[enemytype] = form; //stores it again to reuse, this makes sure that every enemy gets a  new formation every new instance of the game
+    }
+    return enemyform[enemytype];
+  }
+
+  function spawnenemy() { 
+    let wave = wavemanager.waves[wavemanager.currwave]; //using a wave manager to store details about current enemy, points achieved and next enemy up to ensure consistent spawning 
+    let enemytype = wave.enemytype
+    let formation = assign(enemytype);
+    let offsets = FORMATIONS[formation]; //hard coded coordinates
+    let enemyforms = []; //blank array to store enemy formations, later can be used to see which ones active
+    let etype = ENEMYTYPE[enemytype];
+
+    if (!etype) {
+      console.error("Unknown enemy type:", enemytype); //checked cuz i had errors here with assigning
+    }
+
+    
+    for (let offset of offsets) {
+      let e = createSprite(espawnx + offset.x, espawny + offset.y); //give each enemy a position based on an offset, each enemy gets a unique position
+      e.addImage(ENEMYTYPE[enemytype].image); //assigned based on enemytype
+      e.addAnimation("explode",etype.explode); //bad call doing this didnt work so well for a while
+      console.log(`Assigned explode animation for`, enemytype, etype.explode);
+      e.scale = 1;
+      e.health = ENEMYTYPE[enemytype].health; //individual health capacities
+      e.enemytype = enemytype;
+      e.damage = ENEMYTYPE[enemytype].damage;
+      e.givespoints = ENEMYTYPE[enemytype].givespoints;
+      e.offset = { x: offset.x, y: offset.y}; //stored the offset values
+      e.exploding = false;
+      enemies.push(e);
+      enemyforms.push(e);
+    }
+
+    activeform.push({ //used in wave completion logic
+      centerx: espawnx,
+      centery: espawny,
+      enemies: enemyforms,
+      inrange: false, //flag put in to stop individual movement and to move as formation
+    });
+  }
+
+  function fireenemy(enemy){ //enemy fire logic
+    let wave = wavemanager.waves[wavemanager.currwave];
+    let enemytype = wave.enemytype
+    let localGunOffset = createVector(-74, -28); //worst 3 hours of my life, used to account for ships rotation
+    //when ship sprite rotated, the gun position rotated too, this is hard coded based on the distance between the ships apparent center and the gun coordinate, then visually adjusted to match it
+    let rotatedOffset = localGunOffset.copy().rotate(radians(enemy.rotation)); // created a opy of the vector and adjust based on rotation
+
+    let bullet = createSprite(
+    enemy.position.x + rotatedOffset.x - 16,  //hard coded coordinates for bullet on the gu - worked for both enemy types
+    enemy.position.y + rotatedOffset.y + 26);
+    if (enemytype === "easyshoot"){
+    bullet.addAnimation("shoot", ene2shoot);
+    bullet.addAnimation("travel", ene2shot);
+    bullet.addAnimation("hit", ene2hit);
+    } else if (enemytype === "hardshoot"){
+      bullet.addAnimation("shoot", ene3shoot);
+    bullet.addAnimation("travel", ene3shot);
+    bullet.addAnimation("hit", ene3hit);
+    };
+    bullet.changeAnimation("shoot");
+    bullet.setCollider("rectangle", 0, 0, 20, 10);
+    bullet.attachedtoship = true; //same as playership, to bind it to enemy shape when it translates or moves
+    bullet.parent = enemy; //stored this to reuse in other functions
+    bullet.damage = ENEMYTYPE[enemytype].damage;
+    bullet.exploding = false;
+    bullet.offset = rotatedOffset.copy(); //stored the vector's copy
+    enemy.depth = bullet.depth - 1; //bullet firing is visible over enemy
+    let dx = ship1spr.position.x - enemy.position.x;
+    let dy = ship1spr.position.y - enemy.position.y;
+    let angle = (atan2(dy,dx)); //position vector to determine path of the bullet
+    let angdeg = degrees(angle);
+    bullet.ang = angdeg + 180; //180 bcoz the bullet was not facing the player, was a hit and trial
+    bullet.rotation = bullet.ang;
+    enemy.rotation = bullet.ang; //same as bullet, used lerp but cant see it work cuz of high rate of fire
+    let d = createVector(dx, dy);
+    d.normalize(); //created a vector and turned into unit vector to save its direction
+    bullet.vex = d.x * enemy.firerate; //direction * magnitude, firerate adjusted individually
+    bullet.vey = d.y * enemy.firerate;
+
+    enemybullets.push(bullet);
+  }
+
+  
+  function handlenebullets(){
+    for (let i = enemybullets.length - 1; i>=0; i--){
+      let b = enemybullets[i];
+      
+      if (b.attachedtoship == true){ //when it is attached to ship
+        let baseoffset = createVector(-74, -28); //created same vector again
+        let rotateoffset = baseoffset.copy().rotate(radians(b.parent.rotation));
+        b.offset = rotateoffset; // Update offset
+        b.position.x = b.parent.position.x + b.offset.x - 16 ;//updates position based on parent enemys position
+        b.position.y = b.parent.position.y + b.offset.y + 26;
+      }
+      if(
+        b.animation.getFrame()  === b.animation.getLastFrame() &&
+        b.getAnimationLabel() === "shoot"){
+          b.changeAnimation("travel");
+          b.attachedtoship = false;
+          b.velocity.x = b.vex;
+          b.velocity.y = b.vey;
+        }
+      
+      if (b.position.x < -50 || b.position.x > width + 50 || b.position.y < -50 || b.position.y > height + 50){
+          b.remove();
+          enemybullets.splice(i,1);
+      }
+      else if (b.overlap(ship1spr) && !b.exploding){
+        curhealth -= b.damage; //deduct health based o enemyt damage
+        b.changeAnimation("hit");
+        b.velocity.x = 0;
+        b.velocity.y = 0;
+        b.exploding = true;
+        b.animation.rewind();
+      }
+      if (b.exploding && b.animation.getFrame() === b.animation.getLastFrame()){ //remove exploded bullets
+        b.remove();
+        enemybullets.splice(i,1);
+      }
+    }
+  }
+
+  function handleene() {
+    for (let formation of activeform) {
+      if (!formation.inrange) {
+        formation.centerx -= 8; //moves formation in at 8px/sec
+  
+        for (let enemy of formation.enemies) {
+          if (enemy.health > 0 && !enemy.exploding) {
+            enemy.position.x = formation.centerx + enemy.offset.x;
+            enemy.position.y = formation.centery + enemy.offset.y;
+          }
+        }
+  
+        if (formation.centerx <= 1700) {
+          formation.inrange = true;
+          if (wavemanager.waves[wavemanager.currwave].enemytype === "easyshoot") { //for the first shoot enemy (2nd wave enemy)
+            for (let enemy of formation.enemies) {
+              if (!enemy.exploding){ //for enemies not killed before they reach range, it assigns a random target location for them to break formation and go to
+                enemy.targetX = random(1200, 1600);
+                enemy.targetY = random(300, height - 200); //constrained to player bounded region
+                enemy.inPosition = false; //flag to control velocity and futher movements
+                enemy.movecd = int(random(80, 100)); //a random integer to give a cd for ship strafing
+                enemy.firerate = int(random(30,40)); //random firerate to desync shooting
+                enemy.lastshot = (frameCount*random(0.7, 1.4)) - random(0, 200); // last shot used with fire rate,random math here to desync even more
+                enemy.strafing = false; //strafing flag to change movement type
+              }
+            }
+          }
+          else if (wavemanager.waves[wavemanager.currwave].enemytype === "hardshoot") { //for 2nd shooter and 3rd wave enemy
+            for (let enemy of formation.enemies) {
+              if (!enemy.exploding) {
+                enemy.targetX = random(1000, 1600);
+                enemy.targetY = random(300, 600);
+                enemy.inPosition = false;
+                enemy.firing = false; // to control firing, wanted to make him slow but powerful
+                enemy.moving = true; //to control movement
+                enemy.movecd = 0; // cd for firing pause
+                enemy.movespeed = random(0.02, 0.04); // slower speed for oscillation instead o strafe
+                enemy.strafingRadius = random(50, 80); // radius for semicircle path
+                enemy.firerate = random(15,40); // high firing rate also desynced
+                enemy.lastshot = frameCount - random(0, 20); // desync shots even more
+                enemy.angle = -PI / 2; // start at top (12 o'clock on the clock)
+                enemy.direction = 1; // to control direction of path, 1 for down, -1 for up
+              }
+            }
+          }
+        }
+      } else { //once in rane and the first loop has run
+        for (let enemy of formation.enemies) {
+          if (enemy.health > 0 && !enemy.exploding) {
+            if (enemy.enemytype === "suicide") { //kamikaze enemies, will destroy themselves to damage you
+              let d = createVector(ship1spr.position.x - enemy.position.x, ship1spr.position.y - enemy.position.y);
+              d.normalize(); //direction vector to track player
+              let speed = random(5, 20); //desync formation
+              let t = frameCount * 0.1; //this helps t increase slowly overtime varying position
+              let zigzag = sin(t) * random(40, 80); //using a function of sine to give a verticle offset with a random amplitude
+              enemy.velocity.x = d.x * speed + cos(t) * 2; //move to player with a small horizontal oscillation of cos function
+              enemy.velocity.y = d.y * speed + zigzag * 0.1; //zigzag offset scaled down to keep it erratic 
+            } //tried using perlin noise to give a even random path - not a fun experience 
+            else if (enemy.enemytype === "easyshoot") { 
+              if (!enemy.inPosition) {
+                let d = createVector(enemy.targetX - enemy.position.x, enemy.targetY - enemy.position.y);
+                if (d.mag() > 5) { //just a safeguard to see if enemy is more than 5 pixels away, incase I were to add W key for free horizontal movement
+                  d.normalize();
+                  enemy.velocity.x = d.x * 5;
+                  enemy.velocity.y = d.y * 5;
+                } else {
+                  enemy.inPosition = true; //in strafing position
+                  enemy.position.x = enemy.targetX; // lock coordinates and save them
+                  enemy.position.y = enemy.targetY;
+                  enemy.velocity.x = 0;
+                  enemy.velocity.y = 0;
+                  enemy.movecd = int(random(80, 100));
+                }
+              } else { //makes sure above loop is run once and enemy is locked into position
+                enemy.position.x = enemy.targetX; // lock x-position to prevent front&back movement
+                enemy.velocity.x = 0; //safeguard
+  
+                if (enemy.strafing) {
+                  let dy = enemy.targetY - enemy.position.y; //strafe vertically
+                  if (abs(dy) > 2) { //if distance to the new target is at least 2 pixels
+                    enemy.velocity.y = constrain(dy, -3, 3); // slow vertical movement
+                  } else { //if its less than 2, just snap to target
+                    enemy.position.y = enemy.targetY;
+                    enemy.velocity.y = 0;
+                    enemy.strafing = false; 
+                    enemy.movecd = int(random(80, 100)); //new cd for pause
+                  }
+                } else {//loop runs once, enemy is not strafing now
+                  enemy.velocity.y = 0;
+                  enemy.movecd--; //use CD as a counter to delay strafe
+                  if (enemy.movecd <= 0) {
+                    let r = random([-1, 1]); //random up or down strafe
+                    enemy.targetY = constrain(enemy.position.y + r * random(50, 100), 300, height - 200); //sets a new target 50-100 pixels away in both directions but constrained
+                    enemy.strafing = true;
+                  }
+                }
+              }
+              
+              if (frameCount - enemy.lastshot >= enemy.firerate + random(-5, 5)) {//using last shot and frame count to check with firerate, randomness added with a scope of 10
+                fireenemy(enemy);
+                enemy.lastshot = frameCount; //updates new last shot
+                console.log(enemy.lastshot); //check for me to see if some enemies were taking forever to fire
+              }
+            } else if (enemy.enemytype === "hardshoot") { //new enemy
+              let dx = ship1spr.position.x - enemy.position.x;
+              let dy = ship1spr.position.y - enemy.position.y;
+              
+  
+              if (!enemy.inPosition) {
+                let d = createVector(enemy.targetX - enemy.position.x, enemy.targetY - enemy.position.y); //target position
+                if (d.mag() > 5) {
+                  d.normalize();
+                  enemy.velocity.x = d.x * 9; // slower movement
+                  enemy.velocity.y = d.y * 9;
+                } else {
+                  enemy.inPosition = true;
+                  enemy.position.x = enemy.targetX;
+                  enemy.position.y = enemy.targetY;
+                  enemy.velocity.x = 0;
+                  enemy.velocity.y = 0;
+                  enemy.firing = true; // start firing at top
+                  enemy.moving = false; // stop moving
+                  enemy.movecd = 60; // 1s firing pause
+                  enemy.angle = -PI / 2; // ensure at top (12 o'clock)
+                  enemy.direction = 1; // move down next
+                }
+              } else if (enemy.firing) {
+                if (frameCount - enemy.lastshot >= enemy.firerate) {
+                  fireenemy(enemy);
+                  enemy.lastshot = frameCount; //fires only when flag is enabled to impersonate burst firing
+                }
+                enemy.velocity.x = 0;
+                enemy.velocity.y = 0;
+                enemy.movecd--; //uses cd as a counter to give pause
+                if (enemy.movecd <= 0) {
+                  enemy.firing = false; // stop firing
+                  enemy.moving = true; // start moving
+                  enemy.movecd = 0; // reset cd
+                }
+              } else if (enemy.moving) { //actual oscillations
+                enemy.angle += enemy.movespeed * enemy.direction; // updates angle
+                let centerX = enemy.targetX;
+                let centerY = enemy.direction === 1 ? //selects condition based on direction, center of circle will be decided based on direction (above or below)
+                              enemy.targetY + enemy.strafingRadius: 
+                              enemy.targetY - enemy.strafingRadius;
+                enemy.position.x = centerX + enemy.strafingRadius * cos(enemy.angle); //using parametric eqn of cos and sine to trace a circular path, scaled with the straferadius
+                enemy.position.y = centerY + enemy.strafingRadius * sin(enemy.angle);
+                enemy.velocity.x = 0;
+                enemy.velocity.y = 0;
+
+                if (enemy.direction === 1 && enemy.angle >= PI / 2 - 0.01) { // check if reached bottom (PI/2)
+                  enemy.angle = PI / 2;
+                  enemy.position.x = centerX;
+                  enemy.position.y = centerY + enemy.strafingRadius;
+                  enemy.targetX = enemy.position.x; // change the target to bottom
+                  enemy.targetY = enemy.position.y;
+                  enemy.firing = true;
+                  enemy.moving = false;
+                  enemy.movecd = 60; // firing pause
+                  enemy.direction = -1; // move up
+                } else if (enemy.direction === -1 && enemy.angle <= -PI / 2 + 0.01) {// reached top (12 o'clock)
+                  enemy.angle = -PI / 2;
+                  enemy.position.x = centerX;
+                  enemy.position.y = centerY - enemy.strafingRadius;
+                  enemy.targetX = enemy.position.x; // set target to top
+                  enemy.targetY = enemy.position.y;
+                  enemy.firing = true;
+                  enemy.moving = false;
+                  enemy.movecd = 60;
+                  enemy.direction = 1; // now move down next
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+
+  function checkEPcollisions() { //collisions between player and enemy, esp for kamikaze enemies
+    for (let x = enemies.length - 1; x >= 0; x--) {
+      if (enemies[x].overlap(ship1spr)) {
+        if (!enemies[x].exploding) {
+          enemies[x].changeAnimation("explode");
+          explo.play();
+          enemies[x].health = 0;
+          enemies[x].velocity.x = 0;
+          enemies[x].velocity.y = 0;
+          enemies[x].exploding = true;
+          curhealth -= enemies[x].damage;
+          enemies[x].animation.rewind();
+        }
+      }
+    }
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (enemies[i].exploding && enemies[i].animation.getFrame() === enemies[i].animation.getLastFrame()) {
+        enemies[i].remove();
+        enemies.splice(i, 1);
+      }
+    }
+
+    for (let i = activeform.length - 1; i >= 0; i--) {
+      let aliveEnemies = activeform[i].enemies.filter(function (e) { //had to use some help with this, wanted to create a new array that will store only enemies with health > 0 from enemies array, useful to see if a wave is truly over
+        return e.health > 0;
+      });
+      activeform[i].enemies = aliveEnemies; //replaces enemies in the activeform array with the alive ones and to make sure theres no movement by dead sprites
+      if (aliveEnemies.length === 0) {
+        activeform.splice(i, 1); //removes the formation if all enemies have died, so this only keeps the formation thats currently on screen and alive
+      }
+    }
+  }
+
+function bulletcol() {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      if (bullets[i].overlap(enemies[j])&& !bullets[i].exploding) { //if a bullet overlaps with any enemy and is not marked as exploding
+        enemies[j].health -= bullets[i].power || 1; //only in case bullet.power is undefined or null, in future if i wanted more enemies
+        bullets[i].changeAnimation("hit");
+        bullets[i].velocity.x = 0;
+        if (!bullets[i].exploding){
+          bullets[i].exploding = true;
+          bullets[i].animation.rewind();
+        }
+        if (enemies[j].health <= 0 && !enemies[j].exploding){
+          enemies[j].changeAnimation("explode");
+          explo.play();
+          enemies[j].velocity.x = 0;
+          enemies[j].velocity.y = 0;
+          enemies[j].exploding = true;
+          enemies[j].animation.rewind();
+           if (enemies[j].givespoints){
+            wavemanager.points += 10;
+            if (bullets[i].ismiss){
+                lastmissrech -= 10; //missile kills give points and reduc CD
+            }
+          }
+        } break;
+      }
+    }
+  }
+    for (let i = bullets.length -1; i >=0; i-- ){
+      if(bullets[i].exploding && bullets[i].animation.getFrame() === bullets[i].animation.getLastFrame()){
+        bullets[i].remove();
+        bullets.splice(i,1);
+      } //remove exploded bullet
+    }
+
+    for (let j = enemies.length - 1; j >=0; j--){
+      if(enemies[j].exploding && enemies[j].animation.getFrame() === enemies[j].animation.getLastFrame()){
+        enemies[j].remove();
+        enemies.splice(j,1);
+      } //remove dead enemy
+    }
+
+    for (let i = activeform.length - 1; i >= 0; i--) { //again filter based on health to store in a new array, seperate from the collision system
+      let aliveEnemies = activeform[i].enemies.filter(function(e) {
+          return e.health > 0;
+      });
+
+      activeform[i].enemies = aliveEnemies;
+      if (aliveEnemies.length === 0) {
+        activeform.splice(i, 1);
+      }
+    }
+  }
+
+function draw() {
+  background(0);
+    
+  switch(gamestate){
+    case 'start':
+      getstart();
+    break;
+    case 'loading':
+      loadingscreen();
+    break;
+    case 'game':
+      fetchgame();
+    break;
+    case 'menu':
+      showmenu();
+      break;
+    case 'gameover':
+      showgmov();
+  }
+}
+
+function showgmov(){
+  fill(0, 150); 
+  rect(0, 0, width, height); 
+  if (frameCount % 60 < 30) {
+    fill(255, 0, 0, 50);
+    rect(0, 0, width, height);
+  }
+  textAlign(CENTER, CENTER);
+  textSize(80);
+  fill(255);
+  text("GAME OVER", width / 2, height / 2 - 50);
+  textSize(30);
+  fill(200);
+  text("Press R to Restart", width / 2, height / 2 + 30);
+}
+
+function showmenu(){
+    image(menubg, 0, 0, width, height);
+  
+    if (menuTitleOpacity < 255) {
+      menuTitleOpacity += 2;
+    }
+  
+    textFont(introfont);
+    textAlign(CENTER, CENTER);
+  
+    fill(255, menuTitleOpacity);
+    textSize(50);
+    text('STELLAR/ODYSSEY', width / 2, height / 3);
+  
+    drawbutton(width / 2, height / 2 + 100, 200, 60, "▶ GAME");
+    drawbutton(width / 2, height / 2 + 180, 250, 60, "🏆 LEADERBOARD");
+  
+    if (showleader) {
+      drawleader();
+    }
+  }
+  function drawbutton(x, y, wid, hei, textx){
+    fill((10,32,90),150);
+    stroke(255);
+    strokeWeight(2);
+    rect(x, y, wid, hei, 10);
+    fill(244,244,244);
+    textSize(32);
+    textAlign(CENTER, CENTER);
+    text(textx, x + wid / 2, y + hei /2);
+  }
+
+function getstart(){
+  if (startopacity < 255){
+    startopacity += 2;
+  }
+
+  fill(255,startopacity);
+  textFont(introfont);
+  textSize(60);
+  textAlign(CENTER,CENTER)
+  text('STELLAR/ODYSSEY', width/2, height/2 - 100  );
+
+  if (startopacity >= 255){
+  let flashopacity;
+  if (flashingdown){
+    flashopacity = maxopacity;
+  } else {
+    flashopacity = 0;
+  }
+  if (flashingdown){
+    maxopacity -= 5;
+    if (maxopacity < 100){
+      flashingdown =  false;
+    }
+  } else {
+    maxopacity += 5;
+    if (maxopacity > 255){
+      flashingdown = true;
+    }
+  }
+  fill (255,flashopacity);
+  textSize(32);
+  text("CLICK TO START", width/2, height / 2 + 50);
+  }
+
+  if (fadeout){
+    fill(0, fadeoutop);
+    rect(0, 0, width, height);
+    fadeoutop += 10;
+    if (fadeoutop >= 255){
+      gamestate = 'loading';
+    }
+  }
+}
+
+function fetchgame() {
+  bgx -= scrospeed / 2;
+  if (bgx <= -width) {
+    bgx = 0;
+  }
+  image(backgroun, bgx, 0, width, height);
+  image(backgroun, bgx + width, 0, width, height); //mimicked parallax effect with a looping background png that is tileable
+    
+  //wave system:
+  if (wavemanager.points >= wavemanager.waves[wavemanager.currwave].pointsreq) { //if points satisfied, wave is now set to true, if not, same enemy is respawned
+    wavemanager.wavecomp = true;
+  }
+  if (wavemanager.wavecomp && activeform.length === 0) { //IF wave is true and all enemies dead
+    if (wavemanager.currwave < wavemanager.waves.length - 1) { //if we have more waves left to be sent
+      wavemanager.currwave++; //spawns next enemy in list
+      wavemanager.points = 0; //resets points for new wave
+      wavemanager.wavecomp = false; //flags as incomplete
+    } else {
+      if (!bossmode) { //if all enemies dead and all waves done, we can move to boss mode
+        bossmode = true;
+      }
+    }
+  }
+  if(!wavemanager.wavecomp && activeform.length === 0 && frameCount - lastSpawn >= spawnInterval){ //checks if spawn interval has passed to spawn a new wave
+    spawnenemy();
+    lastSpawn = frameCount;
+    espawny = random(200, height - 200); // Randomize spawn y-position
+  }
+
+  if (keyIsDown(87) && frameCount - llastshot >= firerate && !playerlocked) { //hold W to spam shoot, playerlocked condition useful against cutscenes.. planned...
+    fire();
+    firing.play();
+    llastshot = frameCount;
+  }
+
+  handlebullets();
+  handleene();
+  bulletcol();
+  checkEPcollisions();
+  handlemissiles();
+  handlenebullets();
+
+  fill(255);
+  textSize(30);
+  textFont(introfont)
+  text("Missiles: " + missamm, 350, 140);
+  text("Wave: " + (wavemanager.currwave + 1), 350, 100);
+  text("Points: " + wavemanager.points + "/" + wavemanager.waves[wavemanager.currwave].pointsreq, 350, 120);
+
+  drawStarfield();
+
+  ex1spr.position.x = ship1spr.position.x - 77 ; //exhaust coordinates hard coded
+  ex1spr.position.y = ship1spr.position.y;
+  ex1spr.scale = 2;
+    //handle movement with A and S
+  if (keyIsDown(65)) {
+    targy -= 20;
+  }
+  if (keyIsDown(68)) {
+    targy += 20;
+  }
+  targy = constrain(targy, 200, height - ship1spr.height / 2);
+  ship1spr.position.y = lerp(ship1spr.position.y, targy, 0.1);
+
+  if (keyIsDown(32)) { //Space bar to feel fast
+    scrospeed = 16;
+    ex1spr.visible = true; //ONLY FOR VISUAL EFFECTS, game felt fast paced already, so i didnt relatively speed up enemies, it looks cool tho
+  } else {
+    scrospeed = 8;
+    ex1spr.visible = false;
+  }
+  updatehealth(curhealth, maxhealth);
+    
+  if (bossmode && !bossSpawned) {
+    spawnboss();
+    bossSpawned = true;
+  } if (bossSpawned) {
+    updateBoss();
+  }
+    
+  drawSprites();
+}
+
+function mousePressed() {
+  
+  if (gamestate === 'start' && !fadeout) {
+    fadeout = true;
+  }
+    if (gamestate === 'menu') {
+      let gameX = width / 2;
+      let gameY = height / 2 + 100;
+      let leadY = height / 2 + 180;
+  
+      if (dist(mouseX, mouseY, gameX, gameY) < 100) {
+        gamestate = 'game';
+        showleader = false;
+      }
+  
+      if (dist(mouseX, mouseY, gameX, leadY) < 120) {
+        showleader = !showleader; // toggle on/off
+      }
+    }
+  }  
+function mouseClicked() {
+  
+  if (mouseButton === LEFT) {
+    if (missamm > 0){
+    firemiss(); // launch missil with left button (added condition because i wanted to use right click too)
+    mislau.play();
+    }
+  }
+}
+function drawleader() {
+  push();
+  fill(0, 200);
+  rect(width / 2 - 200, height / 2 - 250, 400, 300, 20);
+  fill(255);
+  textAlign(CENTER);
+  textSize(32);
+  text("LEADERBOARD", width / 2, height / 2 - 200);
+  textSize(24);
+
+  let players = data.players;
+  for (let i = 0; i < players.length; i++) {
+    let entry = `${players[i].rank} - ${players[i].name} - ${players[i].score}`;
+    text(entry, width / 2, height / 2 - 150 + i * 40);
+  }
+  pop();
+}
+
+function clearallproj(){ //quick function to erase all bullets from previous fights
+  for (let i =bullets.length - 1; i >= 0; i--) {
+    bullets[i].remove();
+    bullets.splice(i, 1);
+  }
+  for (let i = enemybullets.length - 1; i >= 0; i--) {
+    enemybullets[i].remove();
+    enemybullets.splice(i, 1);
+  }
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    missiles[i].remove();
+    missiles.splice(i, 1);
+  }
+}
+
+function spawnboss() {
+  clearallproj();
+  playerlocked = true; //cutscene
+  
+  boss = createSprite(width + 300, height / 2);
+  boss.addAnimation("normal", bossnorm);
+  boss.addAnimation("switchstate", bosscraze);
+  boss.addAnimation("final", bossfinal);
+  boss.changeAnimation("normal");
+  boss.animation.changeFrame(0);
+  boss.state = "entry";
+  boss.setCollider("rectangle", 0, 0, 320,60);
+  
+  boss.maxhealth = 450;
+  boss.health = 450;
+  
+  boss.scale = 1;
+  flashing = true;
+  i = 0;
+  
+  boss.velocity.x = 0;
+  bossEntryStartFrame = frameCount;
+}
+  
+
+function updateBoss() {
+  switch (boss.state) { //switch case used to alternate between different states
+    case "entry":
+      scrospeed = 1; // Slow-mo background scroll
+      if (frameCount - bossEntryStartFrame < bossEntryDelay) {
+        fill(255, 0, 0);
+        textSize(80);
+        textAlign(CENTER);
+        text("⚠ WARNING ⚠", width / 2, height / 2);
+      }
+      boss.position.x -= bossentry;
+      if (boss.position.x <= bossEntryTargetX) {
+        boss.position.x = bossEntryTargetX;
+        boss.state = "normfight";
+      }
+    break;
+  
+    case "normfight":
+      enemies = [];  // clear array to wipe normal enemies
+      enemies.push(boss); 
+      playerlocked = false;
+      phase1attacks();
+      if (boss.health <= (boss.maxhealth / 2)) {
+        boss.state = "flash";
+      }
+      break;
+  
+    case "flash":
+      playerlocked = true;
+        
+      if (flashing) {
+        if (flashCounter <= 25) {
+          // alternate red and white every 5 frames
+          if (flashCounter % 5 === 0) {
+            tint(255, 0, 0); // red flash
+          } else {
+            tint(255); // white
+          }
+      
+          flashCounter++;
+         } else {
+          // done flashing
+          flashing = false;
+          flashCounter = 0;
+          tint(255);
+          boss.state = "craze";
+        }
+      }
+    break;
+        
+  
+    case "craze":
+      if (boss.getAnimationLabel() !== "switchstate") {
+        boss.changeAnimation("switchstate");
+        boss.animation.changeFrame(0);
+      }
+  
+      if (boss.animation.getFrame() === boss.animation.getLastFrame()) {
+        boss.state = "final";
+        boss.changeAnimation("final");
+      }
+    break;
+  
+    case "final":
+      playerlocked = false;
+      phase1attacks(); // your final phase attack same as first but with condition\
+      constrain(boss.health,1, 450);
+      if (boss.health <= 1) {
+        finalscene();
+      }
+    break;
+  }
+}
+
+function phase1attacks() {
+  if (!bossattacking) {
+    currattack = "bulletRain";
+    bossattacking = true;
+    // Clear bullets from other enemies before boss attack
+    enemybullets = [];
+    startBulletRain();
+  }
+  if (bossattacking) {
+    updateBulletRain();
+  }
+      
+  handleRecoil();
+  handlenebullets();
+  handlebullets();
+  updatehealth(curhealth,maxhealth);
+  bosshb.resize(650,100);
+  bdisphealth = 450;
+  updatebosshealth(boss.health, 450);
+}
+    
+function startBulletRain() {
+  if (boss.state === "final") {
+    bulletrainmaxshots = 4; // faster shots = tighter bullet pattern
+  }
+  bulletrainShotsFired = 0;
+  bulletRainRouteCount = 0;
+  direction = -1;// start going UP
+  recoiltimer = 0;
+  recoilstage = 0;
+}
+    
+function updateBulletRain() {
+  // Move boss up or down by 5 pixels/frame
+  boss.position.y += direction * 5;
+      
+  // Check if boss reached limits, switch direction and count route
+  if (boss.position.y <= 350) {
+    direction = 1; // now go DOWN
+    bulletRainRouteCount++;
+  } else if (boss.position.y >= 800) {
+    direction = -1; // now go UP
+    bulletRainRouteCount++;
+  }
+      
+  // to see how many shots should have fired based on position
+  const shotInterval = (800 - 350) / bulletrainmaxshots; // 90 pixels per shot
+  const shotsShouldHaveFired = Math.floor((800 - boss.position.y) / shotInterval); //estimate number of shots fired in the interval
+    
+  if (shotsShouldHaveFired > bulletrainShotsFired) {
+    fireBulletRainShots();
+    bulletrainShotsFired = shotsShouldHaveFired;
+
+    recoiltimer = 3;  //a timer for recoil
+    recoilstage = 0;
+  }
+  if (bulletRainRouteCount >= 2) {
+  bossattacking = false;
+  }
+}
+    
+function fireBulletRainShots() { //hard coded gun coordinates
+  if (boss.state === "normfight"){
+    bossshoot(boss.position.x - 240, boss.position.y - 20);
+    bossshoot(boss.position.x - 240, boss.position.y + 10);
+    bossshoot(boss.position.x - 51, boss.position.y - 126);
+    bossshoot(boss.position.x - 51, boss.position.y + 116);}
+
+  else if(boss.state === "final"){
+    bossshoot(boss.position.x - 240, boss.position.y - 20);
+    bossshoot(boss.position.x - 240, boss.position.y + 10);
+    bossshoot(boss.position.x - 15, boss.position.y - 245);
+    bossshoot(boss.position.x - 15, boss.position.y + 235);
+    bossshoot(boss.position.x - 15, boss.position.y - 104);
+    bossshoot(boss.position.x - 15, boss.position.y + 94);
+  }
+}
+    
+function bossshoot(x, y) {
+  let bullet = createSprite(x, y);
+  bullet.addImage(bossbullet);
+  bullet.addAnimation("hit", bossbullhit);
+  bullet.velocity.x = -10; // bullet speed to the left
+  bullet.damage = 40;
+  enemybullets.push(bullet);
+}
+    
+function handleRecoil() {
+  if (recoiltimer > 0) {
+    if (recoilstage === 0) {
+      boss.position.x -= recoilAmount; // boss gets pushed back
+      recoilstage = 1;
+    }
+    recoiltimer--;
+  } else if (recoilstage === 1) {
+    boss.position.x += recoilAmount; // boss returns to original position when timer gone
+    recoilstage = 2;
+  }
+}
+
+function finalscene(){
+  if (bossdeathstate === 0) {
+    boss.tint = color(255, 0, 0); // Turn red
+    bossdyingtimer = 60; // hold red for a sec
+    bossdeathstate = 1;
+  }
+
+  // Wait while red
+  if (bossdeathstate === 1) {
+    bossdyingtimer--;
+    if (bossdyingtimer <= 0) {
+      bossdeathstate = 2;
+    }
+  }
+
+  // Fall down and offscreen
+  if (bossdeathstate === 2) {
+    boss.position.y += 10; // fall speed
+    if (boss.position.y > height + 100) {
+      boss.remove(); // remove from screen
+      endzoom = true;
+      bossdeathstate = 3;
+    }
+  }
+
+  // Ship zooms out
+  if (bossdeathstate === 3) {
+    ship1spr.velocity.y = -20;
+    scrospeed = 10;
+    ex1spr.visible = true;
+    if (ship1spr.position.y < -100) {
+      ship1spr.remove();
+      blackout = true;
+      bossdeathstate = 4;
+    }
+  }                                                                                                                                                                                                                                                                                                                                                                                                           
+
+  // Screen closes in (black bars)
+  if (bossdeathstate === 4) {
+    blackoutTopY += 10;
+    blackoutBottomY -= 10;
+
+    fill(0);
+    noStroke();
+    rect(0, 0, width, blackoutTopY); // top bar
+    rect(0, height + blackoutBottomY, width, -blackoutBottomY); // bottom bar
+  }
+
+}
+
+
+function updatebosshealth(x, y) {
+  if (x > y) {
+    x = y;
+  }
+  bdisphealth = lerp(bdisphealth, x, 0.3);
+  let barwidth = map(bdisphealth, 0, y, 0, 500);
+  
+  
+  let barcolor;
+  if (bdisphealth > 300) {
+    barcolor = color(0, 255, 0);
+  } else if (bdisphealth < 150) {
+    barcolor = color(255, 50, 50);
+  } else {
+    barcolor = color(255, 204, 0);
+  }
+  image(bosshb, 1100, 30, 650, 100); // background image frame
+  fill(barcolor);
+  noStroke();
+  rect(1120, 65, barwidth, 25);
+}
+
+function triggerGameOver() {
+  isGameOver = true;
+  gamestate = "gameover";
+  noLoop();
+}
+
+function keyPressed() {
+  if (gamestate === "gameover" && key === 'r') {
+    resetGame();
+  }
+
+  if (gamestate === "game" && keyCode === ESCAPE) {
+    pauseGame();
+  } else if (gamestate === "pause" && keyCode === ESCAPE) {
+    resumeGame();
+  }
+
+  if (key === 'm' || key === 'M') {
+    resetGame(); // wipe current game state
+    gamestate = "menu";
+    }
+  if (gamestate === "menu" && keyCode === ENTER) {
+    resetGame();
+    gamestate = "game";
+  }
+
+}
+function resetGame() {
+  isGameOver = false;
+  gamestate = "game";
+  playerHealth = playerMaxHealth;
+  dispPlayerHealth = playerMaxHealth;
+  loop();
+}
+
+
+function pauseGame() {
+  gamestate = 'pause';
+  isPaused = true;
+  // pause all sprite animations
+  ship1spr.animation.stop();
+  ex1spr.animation.stop();
+  for (let bullet of bullets) bullet.animation.stop();
+  for (let missile of missiles) missile.animation.stop();
+  for (let enemy of enemies) enemy.animation.stop();
+  for (let ebullet of enemybullets) ebullet.animation.stop();
+  // pause sounds
+  bgmusic.pause();
+  firing.stop();
+  explo.stop();
+  mislau.stop();
+  ene2sound.stop();
+  enemy3.stop();
+
+  if(isPaused){
+    fill('black');
+    rect(0,0,width,height);
+    fill('white');
+    noStroke();
+    
+    text("PAUSED", width/2, height/2);
+    textAlign(CENTER, CENTER);
+  }
+}
+
+function resumeGame() {
+  gamestate = 'game';
+  isPaused = false;
+  // resume animations
+  ship1spr.animation.play();
+  ex1spr.animation.play();
+  for (let bullet of bullets) bullet.animation.play();
+  for (let missile of missiles) missile.animation.play();
+  for (let enemy of enemies) enemy.animation.play();
+  for (let ebullet of enemybullets) ebullet.animation.play();
+  // Resume background music
+  if (!bgmusic.isPlaying()) {
+    bgmusic.loop();
+    bgmusic.setVolume(1);
+  }
+}

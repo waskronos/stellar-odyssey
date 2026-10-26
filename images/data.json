@@ -1,0 +1,7 @@
+{
+  "players": [
+    { "name": "NOVA", "score": 2300, "rank": 1},
+    { "name": "ZED", "score": 1800 , "rank": 2},
+    { "name": "LYNX", "score": 1500, "rank": 3}
+  ]
+}
